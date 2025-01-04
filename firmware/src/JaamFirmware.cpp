@@ -812,6 +812,13 @@ void saveLatestFirmware() {
   }
   latestFirmware = firmware;
   fwUpdateAvailable = firstIsNewer(latestFirmware, currentFirmware);
+  if (fwUpdateAvailable) {
+    // if settings.fw_update_channel then it's beta channel
+    String releaseNotesHost = String("http://flasher") + settings.serverhost;
+    String releaseNotesUrl = releaseNotesHost + String("/bins/release_notes") + (settings.fw_update_channel ? "_beta.txt" : ".txt");
+    LOG.printf("Release notes url: %s\n", releaseNotesUrl.c_str());
+    // fetch release notes as http request and store in latestReleaseNotes if request is successful
+}
   fillFwVersion(newFwVersion, latestFirmware);
   LOG.printf("Latest firmware version: %s\n", newFwVersion);
   LOG.println(fwUpdateAvailable ? "New fw available!" : "No new firmware available");
@@ -1802,6 +1809,11 @@ void addHeader(AsyncResponseStream* response) {
     response->println("<div class='alert alert-success text-center'>");
     response->print("Доступна нова версія прошивки - <b>");
     response->print(newFwVersion);
+    // if latestReleaseNotes exists
+    if (latestReleaseNotes[0] != '\0') {
+      response->print("</br>");
+      response->print(latestReleaseNotes);
+    }
     response->println("</b></br>Для оновлення перейдіть в розділ <b><a href='/firmware'>Прошивка</a></b></h8>");
     response->println("</div>");
   }
@@ -2384,9 +2396,9 @@ void handleSaveBrightness(AsyncWebServerRequest *request) {
   saved = saveInt(request->getParam("brightness_service", true), &settings.brightness_service, "bs", NULL, checkServicePins) || saved;
   saved = saveFloat(request->getParam("light_sensor_factor", true), &settings.light_sensor_factor, "lsf") || saved;
   saved = saveBool(request->getParam("dim_display_on_night", true), "dim_display_on_night", &settings.dim_display_on_night, "ddon", NULL, updateDisplayBrightness) || saved;
-  
+
   if (saved) autoBrightnessUpdate();
-  
+
   char url[18];
   sprintf(url, "/brightness?svd=%d", saved);
   request->redirect(url);
@@ -2402,7 +2414,7 @@ void handleSaveColors(AsyncWebServerRequest* request) {
   saved = saveInt(request->getParam("color_missiles", true), &settings.color_missiles, "colormi") || saved;
   saved = saveInt(request->getParam("color_drones", true), &settings.color_drones, "colordr") || saved;
   saved = saveInt(request->getParam("color_home_district", true), &settings.color_home_district, "colorhd") || saved;
-  
+
   char url[14];
   sprintf(url, "/colors?svd=%d", saved);
   request->redirect(url);
@@ -2647,7 +2659,7 @@ void checkHomeDistrictAlerts() {
   bool localAlarmNow = ledStatus == 1;
   if (localAlarmNow != alarmNow) {
     alarmNow = localAlarmNow;
-    if (alarmNow && needToPlaySound(ALERT_ON)) playMelody(ALERT_ON); 
+    if (alarmNow && needToPlaySound(ALERT_ON)) playMelody(ALERT_ON);
     if (!alarmNow && needToPlaySound(ALERT_OFF)) playMelody(ALERT_OFF);
 
     alertPinCycle();
@@ -3003,14 +3015,14 @@ void mapAlarms() {
   }
   for (uint16_t i = 0; i < settings.pixelcount; i++) {
     strip[i] = processAlarms(
-      adapted_alarm_leds[i], 
-      adapted_alarm_timers[i], 
-      adapted_explosion_timers[i], 
-      adapted_missiles_timers[i], 
-      adapted_drones_timers[i], 
-      i, 
-      blinkBrightness, 
-      notificationBrightness, 
+      adapted_alarm_leds[i],
+      adapted_alarm_timers[i],
+      adapted_explosion_timers[i],
+      adapted_missiles_timers[i],
+      adapted_drones_timers[i],
+      i,
+      blinkBrightness,
+      notificationBrightness,
       false
     );
   }
@@ -3018,7 +3030,7 @@ void mapAlarms() {
     // same as for local district
     int localDistrict = calculateOffsetDistrict(settings.kyiv_district_mode, settings.home_district, offset);
     fill_solid(
-      bg_strip, 
+      bg_strip,
       settings.bg_pixelcount,
       processAlarms(
         adapted_alarm_leds[localDistrict],
@@ -3267,7 +3279,7 @@ void initSettings() {
   settings.explosion_time         = preferences.getInt("ext", settings.explosion_time);
   settings.alert_blink_time       = preferences.getInt("abt", settings.alert_blink_time);
   settings.melody_volume          = preferences.getInt("mv", settings.melody_volume);
-  
+
   preferences.end();
 
   currentFirmware = parseFirmwareVersion(VERSION);
@@ -3527,9 +3539,9 @@ void initUpdates() {
 
 void initHA() {
   if (shouldWifiReconnect) return;
-  
+
   LOG.println("Init Home assistant API");
-    
+
   if (!ha.initDevice(settings.ha_brokeraddress, settings.devicename, currentFwVersion, settings.devicedescription, chipID)) {
     LOG.println("Home Assistant is not available!");
     return;
