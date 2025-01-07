@@ -508,32 +508,13 @@ async def dataparcer(clients, connection_type):
 
 async def stats(request):
     if request.path_params["token"] == data_token:
+        tcp_clients = await mc.get(b"tcp_clients")
+        tcp_clients_data = json.loads(tcp_clients) if tcp_clients else {}
 
-        def check_string(p, data):
-            for i, char in enumerate(data):
-                try:
-                    char.encode("utf-8")
-                except UnicodeEncodeError as e:
-                    print(f"Problematic character at position {i}: {repr(char)}")
-
-        try:
-            tcp_clients = await mc.get(b"tcp_clients")
-            tcp_clients_data = json.loads(tcp_clients.decode("utf-8")) if tcp_clients else {}
-        except UnicodeEncodeError:
-            check_string("tcp_clients", tcp_clients)
-        try:
-            websocket_clients = await mc.get(b"websocket_clients")
-            websocket_clients_data = json.loads(websocket_clients.decode("utf-8")) if websocket_clients else {}
-        except UnicodeEncodeError:
-            check_string("websocket_clients", tcp_clients)
-
-        try:
-            websocket_clients_dev = await mc.get(b"websocket_clients_dev")
-            websocket_clients_dev_data = (
-                json.loads(websocket_clients_dev.decode("utf-8")) if websocket_clients_dev else {}
-            )
-        except UnicodeEncodeError:
-            check_string("websocket_clients_dev", tcp_clients)
+        websocket_clients = await mc.get(b"websocket_clients")
+        websocket_clients_data = json.loads(websocket_clients) if websocket_clients else {}
+        websocket_clients_dev = await mc.get(b"websocket_clients_dev")
+        websocket_clients_dev_data = json.loads(websocket_clients_dev) if websocket_clients_dev else {}
 
         tcp_clients = await dataparcer(tcp_clients_data, "tcp")
         websocket_clients = await dataparcer(websocket_clients_data, "websockets")
