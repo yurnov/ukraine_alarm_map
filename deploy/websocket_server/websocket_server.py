@@ -5,15 +5,15 @@ import os
 import json
 import random
 import threading
-import pytz
 from aiomcache import Client
 
 from geoip2 import database, errors
 from functools import partial
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 from ga4mp import GtagMP
 
-server_timezone = pytz.timezone("Europe/Kyiv")
+server_timezone = ZoneInfo("Europe/Kyiv")
 
 debug_level = os.environ.get("LOGGING") or "DEBUG"
 websocket_port = os.environ.get("WEBSOCKET_PORT") or 38440
@@ -254,6 +254,10 @@ async def echo(websocket, path):
             region = region or "not-found"
             country = country or "not-found"
             timezone = timezone or "not-found"
+
+    country = country.encode("utf-8", "ignore").decode("utf-8")
+    region = region.encode("utf-8", "ignore").decode("utf-8")
+    city = city.encode("utf-8", "ignore").decode("utf-8")
 
     # if response.country.iso_code != 'UA' and response.continent.code != 'EU':
     #     shared_data.blocked_ips.append(client_ip)
